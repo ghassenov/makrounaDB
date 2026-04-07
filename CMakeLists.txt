@@ -85,3 +85,29 @@ add_test(
     NAME integration.socket_level
     COMMAND integration_test_socket_level $<TARGET_FILE:makrounadb_server>
 )
+
+include(GNUInstallDirs)
+
+install(
+    TARGETS makrounadb_server
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+set(CPACK_PACKAGE_NAME "makrounadb")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "makrounaDB server")
+set(CPACK_PACKAGE_VENDOR "makrounaDB")
+set(CPACK_PACKAGE_CONTACT "maintainers@makrounadb.local")
+if(PROJECT_VERSION)
+    set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+else()
+    set(CPACK_PACKAGE_VERSION "0.1.0")
+endif()
+set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CMAKE_SYSTEM_NAME}")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+
+set(CPACK_GENERATOR "DEB;RPM")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "makrounaDB maintainers")
+set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
+
+include(CPack)
