@@ -13,4 +13,4 @@
 
 ## Release
 
-- `scripts/release/build_release.sh` - modular release builder (`all|deb|rpm|tgz`) with optional GitHub release upload
+- `scripts/release/build_release.sh` - modular release builder (`all|deb|rpm|tgz|windows`) with optional GitHub release upload

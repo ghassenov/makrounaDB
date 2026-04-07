@@ -3,7 +3,10 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 BUILD_DIR="${ROOT_DIR}/build"
+NATIVE_BUILD_DIR="${BUILD_DIR}"
+WINDOWS_BUILD_DIR="${BUILD_DIR}-windows"
 OUT_DIR="${ROOT_DIR}/releases"
+TOOLCHAIN_FILE="${ROOT_DIR}/scripts/release/toolchains/mingw-w64-x86_64.cmake"
 BUILD_TYPE="Release"
 FORMAT="all"
 RUN_TESTS="false"
@@ -21,7 +24,7 @@ Usage:
   bash scripts/release/build_release.sh [options]
 
 Options:
-  --format <all|deb|rpm|tgz>   Package format to build (default: all)
+  --format <all|deb|rpm|tgz|windows>   Package format to build (default: all)
   --build-dir <path>           CMake build directory (default: ./build)
   --out-dir <path>             Export directory for artifacts (default: ./releases)
   --build-type <type>          CMake build type (default: Release)
@@ -39,6 +42,7 @@ Options:
 Examples:
   bash scripts/release/build_release.sh --format all --run-tests
   bash scripts/release/build_release.sh --format rpm
+  bash scripts/release/build_release.sh --format windows
   bash scripts/release/build_release.sh --format deb --github-release --tag v0.1.0
 EOF
 }
@@ -118,12 +122,15 @@ parse_args() {
     done
 
     case "$FORMAT" in
-        all|deb|rpm|tgz)
+        all|deb|rpm|tgz|windows)
             ;;
         *)
-            err "invalid --format: $FORMAT (expected all|deb|rpm|tgz)"
+            err "invalid --format: $FORMAT (expected all|deb|rpm|tgz|windows)"
             ;;
     esac
+
+    NATIVE_BUILD_DIR="$BUILD_DIR"
+    WINDOWS_BUILD_DIR="${BUILD_DIR}-windows"
 }
 
 resolve_tag() {
@@ -144,22 +151,41 @@ resolve_tag() {
     TAG="v0.1.0"
 }
 
-configure_and_build() {
-    mkdir -p "$BUILD_DIR"
-    cmake -S "$ROOT_DIR" -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
-    cmake --build "$BUILD_DIR"
+configure_and_build_native() {
+    mkdir -p "$NATIVE_BUILD_DIR"
+    cmake -S "$ROOT_DIR" -B "$NATIVE_BUILD_DIR" -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
+    cmake --build "$NATIVE_BUILD_DIR"
+}
+
+configure_and_build_windows() {
+    [[ -f "$TOOLCHAIN_FILE" ]] || err "toolchain file not found: $TOOLCHAIN_FILE"
+    require_cmd x86_64-w64-mingw32-gcc
+    require_cmd x86_64-w64-mingw32-g++
+
+    mkdir -p "$WINDOWS_BUILD_DIR"
+    cmake \
+        -S "$ROOT_DIR" \
+        -B "$WINDOWS_BUILD_DIR" \
+        -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
+        -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN_FILE"
+    cmake --build "$WINDOWS_BUILD_DIR"
 }
 
 run_tests() {
     if [[ "$RUN_TESTS" == "true" ]]; then
-        ctest --test-dir "$BUILD_DIR" --output-on-failure
+        if [[ "$FORMAT" == "windows" ]]; then
+            echo "==> Skipping tests for windows cross-build"
+            return
+        fi
+        ctest --test-dir "$NATIVE_BUILD_DIR" --output-on-failure
     fi
 }
 
 build_package() {
     local generator="$1"
+    local config_build_dir="$2"
     echo "==> Building package with CPack generator: ${generator}"
-    cpack --config "$BUILD_DIR/CPackConfig.cmake" -G "$generator" -B "$OUT_DIR"
+    cpack --config "$config_build_dir/CPackConfig.cmake" -G "$generator" -B "$OUT_DIR"
 }
 
 collect_file() {
@@ -177,22 +203,28 @@ build_artifacts() {
 
     case "$FORMAT" in
         all)
-            build_package "DEB"
-            build_package "RPM"
+            build_package "DEB" "$NATIVE_BUILD_DIR"
+            build_package "RPM" "$NATIVE_BUILD_DIR"
+            build_package "ZIP" "$WINDOWS_BUILD_DIR"
             collect_file "*.deb"
             collect_file "*.rpm"
+            collect_file "*.zip"
             ;;
         deb)
-            build_package "DEB"
+            build_package "DEB" "$NATIVE_BUILD_DIR"
             collect_file "*.deb"
             ;;
         rpm)
-            build_package "RPM"
+            build_package "RPM" "$NATIVE_BUILD_DIR"
             collect_file "*.rpm"
             ;;
         tgz)
-            build_package "TGZ"
+            build_package "TGZ" "$NATIVE_BUILD_DIR"
             collect_file "*.tar.gz"
+            ;;
+        windows)
+            build_package "ZIP" "$WINDOWS_BUILD_DIR"
+            collect_file "*.zip"
             ;;
     esac
 
@@ -248,7 +280,20 @@ main() {
     require_cmd git
 
     parse_args "$@"
-    configure_and_build
+
+    case "$FORMAT" in
+        windows)
+            configure_and_build_windows
+            ;;
+        all)
+            configure_and_build_native
+            configure_and_build_windows
+            ;;
+        *)
+            configure_and_build_native
+            ;;
+    esac
+
     run_tests
     build_artifacts
     create_or_update_github_release

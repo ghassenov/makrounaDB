@@ -1,0 +1,14 @@
+.git
+.gitignore
+.github
+build
+build-*
+releases
+cmake-build-*
+data
+*.aof
+*.log
+*.rpm
+*.deb
+*.zip
+benchmarks/report.md

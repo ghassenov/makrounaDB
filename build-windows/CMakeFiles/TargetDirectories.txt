@@ -1,0 +1,10 @@
+/home/louay/personal/makrounaDB/build-windows/CMakeFiles/makrounadb_core.dir
+/home/louay/personal/makrounaDB/build-windows/CMakeFiles/makrounadb_server.dir
+/home/louay/personal/makrounaDB/build-windows/CMakeFiles/package.dir
+/home/louay/personal/makrounaDB/build-windows/CMakeFiles/package_source.dir
+/home/louay/personal/makrounaDB/build-windows/CMakeFiles/edit_cache.dir
+/home/louay/personal/makrounaDB/build-windows/CMakeFiles/rebuild_cache.dir
+/home/louay/personal/makrounaDB/build-windows/CMakeFiles/list_install_components.dir
+/home/louay/personal/makrounaDB/build-windows/CMakeFiles/install.dir
+/home/louay/personal/makrounaDB/build-windows/CMakeFiles/install/local.dir
+/home/louay/personal/makrounaDB/build-windows/CMakeFiles/install/strip.dir

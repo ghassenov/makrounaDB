@@ -1,0 +1,1 @@
+/home/louay/personal/makrounaDB/releases/_CPack_Packages/win64/ZIP/makrounadb-0.1.0-Windows/bin/makrounaDB.exe

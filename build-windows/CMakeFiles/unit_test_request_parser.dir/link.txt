@@ -1,0 +1,3 @@
+/usr/sbin/cmake -E rm -f CMakeFiles/unit_test_request_parser.dir/objects.a
+/usr/sbin/x86_64-w64-mingw32-ar qc CMakeFiles/unit_test_request_parser.dir/objects.a @CMakeFiles/unit_test_request_parser.dir/objects1.rsp
+/usr/sbin/x86_64-w64-mingw32-g++ -O3 -DNDEBUG -Wl,--whole-archive CMakeFiles/unit_test_request_parser.dir/objects.a -Wl,--no-whole-archive -o unit_test_request_parser.exe -Wl,--out-implib,libunit_test_request_parser.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles/unit_test_request_parser.dir/linkLibs.rsp

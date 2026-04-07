@@ -8,9 +8,14 @@
 #include <string>
 #include <vector>
 
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#endif
 
 #include "command/command_dispatcher.hpp"
 #include "common/nl_parser.hpp"
@@ -85,10 +90,39 @@ std::string encode_resp_array(const std::vector<std::string>& arguments) {
     return encoded;
 }
 
-bool send_all(int socket_fd, const std::string& payload) {
+#ifdef _WIN32
+using ShellSocketHandle = SOCKET;
+constexpr ShellSocketHandle kInvalidShellSocket = INVALID_SOCKET;
+
+void close_shell_socket(const ShellSocketHandle socket_fd) {
+    if (socket_fd != INVALID_SOCKET) {
+        ::closesocket(socket_fd);
+    }
+}
+#else
+using ShellSocketHandle = int;
+constexpr ShellSocketHandle kInvalidShellSocket = -1;
+
+void close_shell_socket(const ShellSocketHandle socket_fd) {
+    if (socket_fd >= 0) {
+        ::close(socket_fd);
+    }
+}
+#endif
+
+bool send_all(const ShellSocketHandle socket_fd, const std::string& payload) {
     std::size_t total_sent = 0;
     while (total_sent < payload.size()) {
+#ifdef _WIN32
+        const int bytes = ::send(
+            socket_fd,
+            payload.data() + total_sent,
+            static_cast<int>(payload.size() - total_sent),
+            0
+        );
+#else
         const ssize_t bytes = ::send(socket_fd, payload.data() + total_sent, payload.size() - total_sent, 0);
+#endif
         if (bytes <= 0) {
             return false;
         }
@@ -97,11 +131,11 @@ bool send_all(int socket_fd, const std::string& payload) {
     return true;
 }
 
-std::optional<std::string> read_line_crlf(int socket_fd) {
+std::optional<std::string> read_line_crlf(const ShellSocketHandle socket_fd) {
     std::string line;
     char character = '\0';
     while (true) {
-        const ssize_t bytes = ::recv(socket_fd, &character, 1, 0);
+        const int bytes = ::recv(socket_fd, &character, 1, 0);
         if (bytes <= 0) {
             return std::nullopt;
         }
@@ -112,13 +146,17 @@ std::optional<std::string> read_line_crlf(int socket_fd) {
     }
 }
 
-std::optional<std::string> read_exact(int socket_fd, std::size_t count) {
+std::optional<std::string> read_exact(const ShellSocketHandle socket_fd, std::size_t count) {
     std::string output;
     output.resize(count);
 
     std::size_t total = 0;
     while (total < count) {
+#ifdef _WIN32
+        const int bytes = ::recv(socket_fd, output.data() + total, static_cast<int>(count - total), 0);
+#else
         const ssize_t bytes = ::recv(socket_fd, output.data() + total, count - total, 0);
+#endif
         if (bytes <= 0) {
             return std::nullopt;
         }
@@ -128,7 +166,7 @@ std::optional<std::string> read_exact(int socket_fd, std::size_t count) {
     return output;
 }
 
-std::optional<std::string> read_resp_reply(int socket_fd) {
+std::optional<std::string> read_resp_reply(const ShellSocketHandle socket_fd) {
     const auto header = read_line_crlf(socket_fd);
     if (!header.has_value() || header->empty()) {
         return std::nullopt;
@@ -186,9 +224,20 @@ std::string pretty_reply(std::string_view reply) {
 }
 
 int run_nl_shell(const std::string& host, std::uint16_t port) {
-    const int socket_fd = ::socket(AF_INET, SOCK_STREAM, 0);
-    if (socket_fd < 0) {
+#ifdef _WIN32
+    WSADATA wsa_data{};
+    if (WSAStartup(MAKEWORD(2, 2), &wsa_data) != 0) {
+        std::cerr << "error: unable to initialize winsock\n";
+        return 1;
+    }
+#endif
+
+    const ShellSocketHandle socket_fd = ::socket(AF_INET, SOCK_STREAM, 0);
+    if (socket_fd == kInvalidShellSocket) {
         std::cerr << "error: unable to create socket\n";
+#ifdef _WIN32
+        WSACleanup();
+#endif
         return 1;
     }
 
@@ -197,13 +246,19 @@ int run_nl_shell(const std::string& host, std::uint16_t port) {
     address.sin_port = htons(port);
     if (::inet_pton(AF_INET, host.c_str(), &address.sin_addr) <= 0) {
         std::cerr << "error: invalid host\n";
-        ::close(socket_fd);
+        close_shell_socket(socket_fd);
+#ifdef _WIN32
+        WSACleanup();
+#endif
         return 1;
     }
 
     if (::connect(socket_fd, reinterpret_cast<sockaddr*>(&address), sizeof(address)) < 0) {
         std::cerr << "error: could not connect to " << host << ':' << port << "\n";
-        ::close(socket_fd);
+        close_shell_socket(socket_fd);
+#ifdef _WIN32
+        WSACleanup();
+#endif
         return 1;
     }
 
@@ -225,21 +280,30 @@ int run_nl_shell(const std::string& host, std::uint16_t port) {
         const std::string payload = encode_resp_array(*command);
         if (!send_all(socket_fd, payload)) {
             std::cerr << "error: failed to send command\n";
-            ::close(socket_fd);
+            close_shell_socket(socket_fd);
+#ifdef _WIN32
+            WSACleanup();
+#endif
             return 1;
         }
 
         const auto reply = read_resp_reply(socket_fd);
         if (!reply.has_value()) {
             std::cerr << "error: failed to read reply\n";
-            ::close(socket_fd);
+            close_shell_socket(socket_fd);
+#ifdef _WIN32
+            WSACleanup();
+#endif
             return 1;
         }
 
         std::cout << pretty_reply(*reply) << "\n";
     }
 
-    ::close(socket_fd);
+    close_shell_socket(socket_fd);
+#ifdef _WIN32
+    WSACleanup();
+#endif
     return 0;
 }
 
