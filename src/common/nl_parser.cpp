@@ -126,6 +126,84 @@ parse_natural_language_command(const std::string &input) {
         return std::vector<std::string>{"TTL", match[1].str()};
     }
 
+    // RIGATONI: decrement by 1
+    if (std::regex_match(
+            normalized, match,
+            std::regex("^(decr|decrement|decrease)\\s+([^\\s]+)$",
+                       std::regex::icase))) {
+        return std::vector<std::string>{"RIGATONI", match[2].str()};
+    }
+
+    // LINGUINE: increment by N
+    if (std::regex_match(
+            normalized, match,
+            std::regex("^(increment|increase|add)\\s+([^\\s]+)\\s+by\\s+([0-9]+)$",
+                       std::regex::icase))) {
+        return std::vector<std::string>{"LINGUINE", match[2].str(), match[3].str()};
+    }
+
+    // VERMICELLI: decrement by N
+    if (std::regex_match(
+            normalized, match,
+            std::regex("^(decrement|decrease|subtract)\\s+([^\\s]+)\\s+by\\s+([0-9]+)$",
+                       std::regex::icase))) {
+        return std::vector<std::string>{"VERMICELLI", match[2].str(), match[3].str()};
+    }
+
+    // SPAGHETTI: string length
+    if (std::regex_match(
+            normalized, match,
+            std::regex("^(length|strlen)\\s+of\\s+([^\\s]+)$",
+                       std::regex::icase))) {
+        return std::vector<std::string>{"SPAGHETTI", match[2].str()};
+    }
+
+    if (std::regex_match(
+            normalized, match,
+            std::regex("^how\\s+long\\s+is\\s+([^\\s\\?]+)\\??$",
+                       std::regex::icase))) {
+        return std::vector<std::string>{"SPAGHETTI", match[1].str()};
+    }
+
+    // PENNE: set only if key is absent
+    if (std::regex_match(
+            normalized, match,
+            std::regex("^set\\s+([^\\s]+)\\s+(to|as)\\s+(.+)\\s+if\\s+(not\\s+exists?|missing|absent)$",
+                       std::regex::icase))) {
+        return std::vector<std::string>{"PENNE", match[1].str(), trim(match[3].str())};
+    }
+
+    // ALDENTE: remove expiry from key
+    if (std::regex_match(
+            normalized, match,
+            std::regex("^(persist|make\\s+permanent)\\s+([^\\s]+)$",
+                       std::regex::icase))) {
+        return std::vector<std::string>{"ALDENTE", match[2].str()};
+    }
+
+    if (std::regex_match(
+            normalized, match,
+            std::regex("^remove\\s+(expiry|expiration|ttl)\\s+(of|from)\\s+([^\\s]+)$",
+                       std::regex::icase))) {
+        return std::vector<std::string>{"ALDENTE", match[3].str()};
+    }
+
+    // FARFALLE: get and delete
+    if (std::regex_match(
+            normalized, match,
+            std::regex("^(get\\s+and\\s+delete|fetch\\s+and\\s+remove|getdel)\\s+([^\\s]+)$",
+                       std::regex::icase))) {
+        return std::vector<std::string>{"FARFALLE", match[2].str()};
+    }
+
+    // LASAGNA: rename a key
+    if (std::regex_match(
+            normalized, match,
+            std::regex("^rename\\s+([^\\s]+)\\s+to\\s+([^\\s]+)$",
+                       std::regex::icase))) {
+        return std::vector<std::string>{"LASAGNA", match[1].str(), match[2].str()};
+    }
+
     return std::nullopt;
 }
 
