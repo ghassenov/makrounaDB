@@ -113,6 +113,16 @@ Supported server commands:
 - `EXPIRE key seconds`
 - `TTL key`
 
+Pasta-themed commands:
+- `RIGATONI key` — decrement integer by 1 (like DECR)
+- `LINGUINE key amount` — increment integer by N (like INCRBY)
+- `VERMICELLI key amount` — decrement integer by N (like DECRBY)
+- `SPAGHETTI key` — return byte length of value (like STRLEN)
+- `PENNE key value` — set only if key does not exist, returns 1 if set (like SETNX)
+- `ALDENTE key` — remove TTL so key never expires, returns 1 if TTL was removed (like PERSIST)
+- `FARFALLE key` — return value and delete key atomically (like GETDEL)
+- `LASAGNA key newkey` — rename key to newkey (like RENAME)
+
 ## 7) Test commands with example client
 
 With server running:

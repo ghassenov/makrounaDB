@@ -66,6 +66,82 @@ long long KeyValueStore::incr(const std::string& key) {
     return next;
 }
 
+long long KeyValueStore::incrby(const std::string& key, long long amount) {
+    long long current = 0;
+
+    if (const auto existing = get(key); existing.has_value()) {
+        std::size_t consumed_characters = 0;
+        current = std::stoll(*existing, &consumed_characters);
+        if (consumed_characters != existing->size()) {
+            throw std::runtime_error("value is not an integer");
+        }
+    }
+
+    const long long next = current + amount;
+    keyspace_[key] = std::to_string(next);
+    return next;
+}
+
+long long KeyValueStore::decr(const std::string& key) {
+    return incrby(key, -1);
+}
+
+long long KeyValueStore::decrby(const std::string& key, long long amount) {
+    return incrby(key, -amount);
+}
+
+long long KeyValueStore::strlen(const std::string& key) {
+    const auto value = get(key);
+    if (!value.has_value()) {
+        return 0;
+    }
+    return static_cast<long long>(value->size());
+}
+
+bool KeyValueStore::setnx(const std::string& key, const std::string& value) {
+    if (exists(key)) {
+        return false;
+    }
+    set(key, value);
+    return true;
+}
+
+bool KeyValueStore::persist(const std::string& key) {
+    if (!exists(key)) {
+        return false;
+    }
+    return expirations_.erase(key) > 0;
+}
+
+std::optional<std::string> KeyValueStore::getdel(const std::string& key) {
+    const auto value = get(key);
+    if (!value.has_value()) {
+        return std::nullopt;
+    }
+    del(key);
+    return value;
+}
+
+bool KeyValueStore::rename(const std::string& from, const std::string& to) {
+    const auto now = std::chrono::steady_clock::now();
+    if (erase_if_expired(from, now) || keyspace_.find(from) == keyspace_.end()) {
+        return false;
+    }
+
+    keyspace_[to] = std::move(keyspace_[from]);
+    keyspace_.erase(from);
+
+    const auto expiry_it = expirations_.find(from);
+    if (expiry_it != expirations_.end()) {
+        expirations_[to] = expiry_it->second;
+        expirations_.erase(expiry_it);
+    } else {
+        expirations_.erase(to);
+    }
+
+    return true;
+}
+
 bool KeyValueStore::expire(const std::string& key, long long seconds) {
     if (!exists(key)) {
         return false;

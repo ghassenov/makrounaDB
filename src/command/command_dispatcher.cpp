@@ -87,6 +87,98 @@ std::string CommandDispatcher::execute(const std::vector<std::string>& arguments
         }
     }
 
+    // LINGUINE: increment by N (like INCRBY)
+    if (command == "LINGUINE") {
+        if (arguments.size() != 3) {
+            return protocol::error("wrong number of arguments for 'LINGUINE'");
+        }
+        try {
+            std::size_t consumed = 0;
+            const long long amount = std::stoll(arguments[2], &consumed);
+            if (consumed != arguments[2].size()) {
+                return protocol::error("value is not an integer or out of range");
+            }
+            return protocol::integer(store_.incrby(arguments[1], amount));
+        } catch (const std::exception&) {
+            return protocol::error("value is not an integer or out of range");
+        }
+    }
+
+    // RIGATONI: decrement by 1 (like DECR)
+    if (command == "RIGATONI") {
+        if (arguments.size() != 2) {
+            return protocol::error("wrong number of arguments for 'RIGATONI'");
+        }
+        try {
+            return protocol::integer(store_.decr(arguments[1]));
+        } catch (const std::exception&) {
+            return protocol::error("value is not an integer or out of range");
+        }
+    }
+
+    // VERMICELLI: decrement by N (like DECRBY)
+    if (command == "VERMICELLI") {
+        if (arguments.size() != 3) {
+            return protocol::error("wrong number of arguments for 'VERMICELLI'");
+        }
+        try {
+            std::size_t consumed = 0;
+            const long long amount = std::stoll(arguments[2], &consumed);
+            if (consumed != arguments[2].size()) {
+                return protocol::error("value is not an integer or out of range");
+            }
+            return protocol::integer(store_.decrby(arguments[1], amount));
+        } catch (const std::exception&) {
+            return protocol::error("value is not an integer or out of range");
+        }
+    }
+
+    // SPAGHETTI: string length (like STRLEN)
+    if (command == "SPAGHETTI") {
+        if (arguments.size() != 2) {
+            return protocol::error("wrong number of arguments for 'SPAGHETTI'");
+        }
+        return protocol::integer(store_.strlen(arguments[1]));
+    }
+
+    // PENNE: set if not exists (like SETNX)
+    if (command == "PENNE") {
+        if (arguments.size() != 3) {
+            return protocol::error("wrong number of arguments for 'PENNE'");
+        }
+        return protocol::integer(store_.setnx(arguments[1], arguments[2]) ? 1 : 0);
+    }
+
+    // ALDENTE: remove TTL from key (like PERSIST)
+    if (command == "ALDENTE") {
+        if (arguments.size() != 2) {
+            return protocol::error("wrong number of arguments for 'ALDENTE'");
+        }
+        return protocol::integer(store_.persist(arguments[1]) ? 1 : 0);
+    }
+
+    // FARFALLE: get value then delete key (like GETDEL)
+    if (command == "FARFALLE") {
+        if (arguments.size() != 2) {
+            return protocol::error("wrong number of arguments for 'FARFALLE'");
+        }
+        if (const auto value = store_.getdel(arguments[1]); value.has_value()) {
+            return protocol::bulk_string(*value);
+        }
+        return protocol::null_bulk_string();
+    }
+
+    // LASAGNA: rename a key (like RENAME)
+    if (command == "LASAGNA") {
+        if (arguments.size() != 3) {
+            return protocol::error("wrong number of arguments for 'LASAGNA'");
+        }
+        if (!store_.rename(arguments[1], arguments[2])) {
+            return protocol::error("no such key");
+        }
+        return protocol::simple_string("OK");
+    }
+
     if (command == "EXPIRE") {
         if (arguments.size() != 3) {
             return protocol::error("wrong number of arguments for 'EXPIRE'");
