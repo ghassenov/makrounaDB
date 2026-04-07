@@ -171,12 +171,13 @@ Report is generated at:
 benchmarks/report.md
 ```
 
-## 10) Export release artifacts (.deb / .rpm / all)
+## 10) Export release artifacts (.deb / .rpm / Windows .zip / all)
 
 ```bash
 bash scripts/release/build_release.sh --format all
 bash scripts/release/build_release.sh --format deb
 bash scripts/release/build_release.sh --format rpm
+bash scripts/release/build_release.sh --format windows
 ```
 
 Artifacts are exported to `./releases`.

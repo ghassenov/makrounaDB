@@ -1,9 +1,14 @@
 #include "network/server.hpp"
 
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
 #include <arpa/inet.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#endif
 
 #include <algorithm>
 #include <cerrno>
@@ -20,17 +25,62 @@ namespace {
 
 constexpr int kReadBufferSize = 4096;
 
-bool send_all(int socket_fd, const std::string& payload) {
+#ifdef _WIN32
+using SocketLength = int;
+constexpr SocketHandle kInvalidSocket = INVALID_SOCKET;
+
+int last_socket_error() {
+    return WSAGetLastError();
+}
+
+bool is_interrupted_error(const int error_code) {
+    return error_code == WSAEINTR;
+}
+
+void close_socket(const SocketHandle socket_fd) {
+    if (socket_fd != INVALID_SOCKET) {
+        ::closesocket(socket_fd);
+    }
+}
+#else
+using SocketLength = socklen_t;
+constexpr SocketHandle kInvalidSocket = -1;
+
+int last_socket_error() {
+    return errno;
+}
+
+bool is_interrupted_error(const int error_code) {
+    return error_code == EINTR;
+}
+
+void close_socket(const SocketHandle socket_fd) {
+    if (socket_fd >= 0) {
+        ::close(socket_fd);
+    }
+}
+#endif
+
+bool send_all(const SocketHandle socket_fd, const std::string& payload) {
     std::size_t total_sent = 0;
     while (total_sent < payload.size()) {
+#ifdef _WIN32
+        const int sent = ::send(
+            socket_fd,
+            payload.data() + total_sent,
+            static_cast<int>(payload.size() - total_sent),
+            0
+        );
+#else
         const ssize_t sent = ::send(
             socket_fd,
             payload.data() + total_sent,
             payload.size() - total_sent,
             0
         );
+#endif
         if (sent < 0) {
-            if (errno == EINTR) {
+            if (is_interrupted_error(last_socket_error())) {
                 continue;
             }
             return false;
@@ -54,14 +104,14 @@ Server::Server(
 
 bool Server::setup_listener() {
     listener_fd_ = ::socket(AF_INET, SOCK_STREAM, 0);
-    if (listener_fd_ < 0) {
+    if (listener_fd_ == kInvalidSocket) {
         return false;
     }
 
     int reuse_addr = 1;
-    if (::setsockopt(listener_fd_, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(reuse_addr)) < 0) {
-        ::close(listener_fd_);
-        listener_fd_ = -1;
+    if (::setsockopt(listener_fd_, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&reuse_addr), sizeof(reuse_addr)) < 0) {
+        close_socket(listener_fd_);
+        listener_fd_ = kInvalidSocket;
         return false;
     }
 
@@ -71,14 +121,14 @@ bool Server::setup_listener() {
     address.sin_port = htons(port_);
 
     if (::bind(listener_fd_, reinterpret_cast<sockaddr*>(&address), sizeof(address)) < 0) {
-        ::close(listener_fd_);
-        listener_fd_ = -1;
+        close_socket(listener_fd_);
+        listener_fd_ = kInvalidSocket;
         return false;
     }
 
     if (::listen(listener_fd_, SOMAXCONN) < 0) {
-        ::close(listener_fd_);
-        listener_fd_ = -1;
+        close_socket(listener_fd_);
+        listener_fd_ = kInvalidSocket;
         return false;
     }
 
@@ -90,24 +140,42 @@ void Server::run() {
         return;
     }
 
+#ifdef _WIN32
+    WSADATA wsa_data{};
+    if (WSAStartup(MAKEWORD(2, 2), &wsa_data) != 0) {
+        return;
+    }
+#endif
+
     if (!setup_listener()) {
+#ifdef _WIN32
+        WSACleanup();
+#endif
         return;
     }
 
     running_.store(true);
     event_loop();
 
-    if (listener_fd_ >= 0) {
-        ::close(listener_fd_);
-        listener_fd_ = -1;
+    if (listener_fd_ != kInvalidSocket) {
+        close_socket(listener_fd_);
+        listener_fd_ = kInvalidSocket;
     }
+
+#ifdef _WIN32
+    WSACleanup();
+#endif
 }
 
 void Server::stop() {
     running_.store(false);
 
-    if (listener_fd_ >= 0) {
+    if (listener_fd_ != kInvalidSocket) {
+#ifdef _WIN32
+        ::shutdown(listener_fd_, SD_BOTH);
+#else
         ::shutdown(listener_fd_, SHUT_RDWR);
+#endif
     }
 
     if (persistence_ != nullptr) {
@@ -120,16 +188,16 @@ bool Server::is_running() const {
 }
 
 void Server::event_loop() {
-    std::vector<int> clients;
-    std::unordered_map<int, std::string> client_buffers;
+    std::vector<SocketHandle> clients;
+    std::unordered_map<SocketHandle, std::string> client_buffers;
 
     while (running_.load()) {
         fd_set read_fds;
         FD_ZERO(&read_fds);
         FD_SET(listener_fd_, &read_fds);
 
-        int max_fd = listener_fd_;
-        for (const int client_fd : clients) {
+        SocketHandle max_fd = listener_fd_;
+        for (const SocketHandle client_fd : clients) {
             FD_SET(client_fd, &read_fds);
             max_fd = std::max(max_fd, client_fd);
         }
@@ -138,9 +206,9 @@ void Server::event_loop() {
         timeout.tv_sec = 1;
         timeout.tv_usec = 0;
 
-        const int selected = ::select(max_fd + 1, &read_fds, nullptr, nullptr, &timeout);
+        const int selected = ::select(static_cast<int>(max_fd) + 1, &read_fds, nullptr, nullptr, &timeout);
         if (selected < 0) {
-            if (errno == EINTR) {
+            if (is_interrupted_error(last_socket_error())) {
                 continue;
             }
             break;
@@ -152,22 +220,26 @@ void Server::event_loop() {
         }
 
         if (FD_ISSET(listener_fd_, &read_fds)) {
-            const int client_fd = ::accept(listener_fd_, nullptr, nullptr);
-            if (client_fd >= 0) {
+            const SocketHandle client_fd = ::accept(listener_fd_, nullptr, nullptr);
+            if (client_fd != kInvalidSocket) {
                 clients.push_back(client_fd);
                 client_buffers.emplace(client_fd, std::string{});
             }
         }
 
-        std::vector<int> disconnected;
+        std::vector<SocketHandle> disconnected;
         char read_buffer[kReadBufferSize];
 
-        for (const int client_fd : clients) {
+        for (const SocketHandle client_fd : clients) {
             if (!FD_ISSET(client_fd, &read_fds)) {
                 continue;
             }
 
+#ifdef _WIN32
+            const int bytes_read = ::recv(client_fd, read_buffer, static_cast<int>(sizeof(read_buffer)), 0);
+#else
             const ssize_t bytes_read = ::recv(client_fd, read_buffer, sizeof(read_buffer), 0);
+#endif
             if (bytes_read <= 0) {
                 disconnected.push_back(client_fd);
                 continue;
@@ -202,15 +274,15 @@ void Server::event_loop() {
             }
         }
 
-        for (const int client_fd : disconnected) {
-            ::close(client_fd);
+        for (const SocketHandle client_fd : disconnected) {
+            close_socket(client_fd);
             client_buffers.erase(client_fd);
             clients.erase(std::remove(clients.begin(), clients.end(), client_fd), clients.end());
         }
     }
 
-    for (const int client_fd : clients) {
-        ::close(client_fd);
+    for (const SocketHandle client_fd : clients) {
+        close_socket(client_fd);
     }
 }
 

@@ -8,7 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(MAKROUNADB_ENABLE_SANITIZERS "Enable ASan/UBSan for debug-like builds" ON)
 
-if(MAKROUNADB_ENABLE_SANITIZERS AND CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+if(MAKROUNADB_ENABLE_SANITIZERS AND CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU" AND NOT WIN32)
     add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
     add_link_options(-fsanitize=address,undefined)
 endif()
@@ -29,6 +29,14 @@ target_include_directories(makrounadb_core
 
 target_compile_features(makrounadb_core PUBLIC cxx_std_20)
 
+if(WIN32)
+    target_link_libraries(makrounadb_core PUBLIC ws2_32)
+endif()
+
+if(MINGW)
+    add_link_options(-static -static-libgcc -static-libstdc++)
+endif()
+
 add_executable(makrounadb_server
     src/app/main.cpp
     src/network/server.cpp
@@ -40,51 +48,53 @@ target_link_libraries(makrounadb_server
         makrounadb_core
 )
 
-enable_testing()
+if(NOT WIN32)
+    enable_testing()
 
-add_executable(unit_test_key_value_store
-    tests/unit/test_key_value_store.cpp
-)
-target_link_libraries(unit_test_key_value_store PRIVATE makrounadb_core)
-add_test(NAME unit.key_value_store COMMAND unit_test_key_value_store)
+    add_executable(unit_test_key_value_store
+        tests/unit/test_key_value_store.cpp
+    )
+    target_link_libraries(unit_test_key_value_store PRIVATE makrounadb_core)
+    add_test(NAME unit.key_value_store COMMAND unit_test_key_value_store)
 
-add_executable(unit_test_command_dispatcher
-    tests/unit/test_command_dispatcher.cpp
-)
-target_link_libraries(unit_test_command_dispatcher PRIVATE makrounadb_core)
-add_test(NAME unit.command_dispatcher COMMAND unit_test_command_dispatcher)
+    add_executable(unit_test_command_dispatcher
+        tests/unit/test_command_dispatcher.cpp
+    )
+    target_link_libraries(unit_test_command_dispatcher PRIVATE makrounadb_core)
+    add_test(NAME unit.command_dispatcher COMMAND unit_test_command_dispatcher)
 
-add_executable(unit_test_request_parser
-    tests/unit/test_request_parser.cpp
-)
-target_link_libraries(unit_test_request_parser PRIVATE makrounadb_core)
-add_test(NAME unit.request_parser COMMAND unit_test_request_parser)
+    add_executable(unit_test_request_parser
+        tests/unit/test_request_parser.cpp
+    )
+    target_link_libraries(unit_test_request_parser PRIVATE makrounadb_core)
+    add_test(NAME unit.request_parser COMMAND unit_test_request_parser)
 
-add_executable(unit_test_aof_persistence
-    tests/unit/test_aof_persistence.cpp
-)
-target_link_libraries(unit_test_aof_persistence PRIVATE makrounadb_core)
-add_test(NAME unit.aof_persistence COMMAND unit_test_aof_persistence)
+    add_executable(unit_test_aof_persistence
+        tests/unit/test_aof_persistence.cpp
+    )
+    target_link_libraries(unit_test_aof_persistence PRIVATE makrounadb_core)
+    add_test(NAME unit.aof_persistence COMMAND unit_test_aof_persistence)
 
-add_executable(unit_test_nl_parser
-    tests/unit/test_nl_parser.cpp
-)
-target_link_libraries(unit_test_nl_parser PRIVATE makrounadb_core)
-add_test(NAME unit.nl_parser COMMAND unit_test_nl_parser)
+    add_executable(unit_test_nl_parser
+        tests/unit/test_nl_parser.cpp
+    )
+    target_link_libraries(unit_test_nl_parser PRIVATE makrounadb_core)
+    add_test(NAME unit.nl_parser COMMAND unit_test_nl_parser)
 
-add_executable(integration_test_command_flow
-    tests/integration/test_command_flow.cpp
-)
-target_link_libraries(integration_test_command_flow PRIVATE makrounadb_core)
-add_test(NAME integration.command_flow COMMAND integration_test_command_flow)
+    add_executable(integration_test_command_flow
+        tests/integration/test_command_flow.cpp
+    )
+    target_link_libraries(integration_test_command_flow PRIVATE makrounadb_core)
+    add_test(NAME integration.command_flow COMMAND integration_test_command_flow)
 
-add_executable(integration_test_socket_level
-    tests/integration/test_socket_level.cpp
-)
-add_test(
-    NAME integration.socket_level
-    COMMAND integration_test_socket_level $<TARGET_FILE:makrounadb_server>
-)
+    add_executable(integration_test_socket_level
+        tests/integration/test_socket_level.cpp
+    )
+    add_test(
+        NAME integration.socket_level
+        COMMAND integration_test_socket_level $<TARGET_FILE:makrounadb_server>
+    )
+endif()
 
 include(GNUInstallDirs)
 
@@ -105,9 +115,13 @@ endif()
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CMAKE_SYSTEM_NAME}")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 
-set(CPACK_GENERATOR "DEB;RPM")
-set(CPACK_DEBIAN_PACKAGE_MAINTAINER "makrounaDB maintainers")
-set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
-set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
+if(WIN32)
+    set(CPACK_GENERATOR "ZIP")
+else()
+    set(CPACK_GENERATOR "DEB;RPM")
+    set(CPACK_DEBIAN_PACKAGE_MAINTAINER "makrounaDB maintainers")
+    set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+    set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
+endif()
 
 include(CPack)
