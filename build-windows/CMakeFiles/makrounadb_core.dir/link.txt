@@ -1,2 +1,0 @@
-/usr/sbin/x86_64-w64-mingw32-ar qc libmakrounadb_core.a CMakeFiles/makrounadb_core.dir/src/command/command_dispatcher.cpp.obj CMakeFiles/makrounadb_core.dir/src/common/nl_parser.cpp.obj CMakeFiles/makrounadb_core.dir/src/persistence/aof_persistence.cpp.obj CMakeFiles/makrounadb_core.dir/src/protocol/request_parser.cpp.obj CMakeFiles/makrounadb_core.dir/src/protocol/resp.cpp.obj CMakeFiles/makrounadb_core.dir/src/storage/key_value_store.cpp.obj
-/usr/sbin/x86_64-w64-mingw32-ranlib libmakrounadb_core.a

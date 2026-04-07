@@ -1,3 +1,0 @@
-/usr/sbin/cmake -E rm -f CMakeFiles/integration_test_socket_level.dir/objects.a
-/usr/sbin/x86_64-w64-mingw32-ar qc CMakeFiles/integration_test_socket_level.dir/objects.a @CMakeFiles/integration_test_socket_level.dir/objects1.rsp
-/usr/sbin/x86_64-w64-mingw32-g++ -O3 -DNDEBUG -Wl,--whole-archive CMakeFiles/integration_test_socket_level.dir/objects.a -Wl,--no-whole-archive -o integration_test_socket_level.exe -Wl,--out-implib,libintegration_test_socket_level.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles/integration_test_socket_level.dir/linkLibs.rsp

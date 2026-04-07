@@ -1,3 +1,0 @@
-/usr/sbin/cmake -E rm -f CMakeFiles/makrounadb_server.dir/objects.a
-/usr/sbin/x86_64-w64-mingw32-ar qc CMakeFiles/makrounadb_server.dir/objects.a @CMakeFiles/makrounadb_server.dir/objects1.rsp
-/usr/sbin/x86_64-w64-mingw32-g++ -O3 -DNDEBUG -static -static-libgcc -static-libstdc++ -Wl,--whole-archive CMakeFiles/makrounadb_server.dir/objects.a -Wl,--no-whole-archive -o makrounaDB.exe -Wl,--out-implib,libmakrounaDB.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles/makrounadb_server.dir/linkLibs.rsp
