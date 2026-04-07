@@ -1,0 +1,5 @@
+# makrounaDB sample config
+
+port=6379
+aof_path=data/appendonly.aof
+banner=true

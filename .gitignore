@@ -39,3 +39,26 @@
 
 # debug information files
 *.dwo
+
+# Build directories
+build/
+cmake-build-*/
+releases/
+
+# Runtime data / persistence files
+data/
+*.aof
+
+# Python cache / virtual env
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Benchmark artifacts
+benchmarks/report.md
+
+# Editor / OS files
+.vscode/
+.idea/
+.DS_Store
