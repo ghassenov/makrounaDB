@@ -43,6 +43,7 @@
 # Build directories
 build/
 cmake-build-*/
+releases/
 
 # Runtime data / persistence files
 data/

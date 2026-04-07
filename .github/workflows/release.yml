@@ -1,0 +1,114 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      format:
+        description: "Artifacts to build"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - deb
+          - rpm
+          - tgz
+      run_tests:
+        description: "Run tests before packaging"
+        required: true
+        default: true
+        type: boolean
+      create_github_release:
+        description: "Create/Update GitHub Release and upload artifacts"
+        required: true
+        default: true
+        type: boolean
+      draft:
+        description: "Mark release as draft"
+        required: true
+        default: false
+        type: boolean
+      prerelease:
+        description: "Mark as prerelease"
+        required: true
+        default: false
+        type: boolean
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            rpm
+
+      - name: Setup GitHub CLI
+        run: gh --version
+
+      - name: Build release artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FORMAT="all"
+          RUN_TESTS_FLAG=""
+          GH_RELEASE_FLAG=""
+          DRAFT_FLAG=""
+          PRERELEASE_FLAG=""
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            FORMAT="${{ inputs.format }}"
+            if [[ "${{ inputs.run_tests }}" == "true" ]]; then
+              RUN_TESTS_FLAG="--run-tests"
+            fi
+            if [[ "${{ inputs.create_github_release }}" == "true" ]]; then
+              GH_RELEASE_FLAG="--github-release"
+            fi
+            if [[ "${{ inputs.draft }}" == "true" ]]; then
+              DRAFT_FLAG="--draft"
+            fi
+            if [[ "${{ inputs.prerelease }}" == "true" ]]; then
+              PRERELEASE_FLAG="--prerelease"
+            fi
+          else
+            FORMAT="all"
+            RUN_TESTS_FLAG="--run-tests"
+            GH_RELEASE_FLAG="--github-release"
+          fi
+
+          TAG_FLAG=""
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            TAG_FLAG="--tag ${GITHUB_REF_NAME}"
+          fi
+
+          bash scripts/release/build_release.sh \
+            --format "${FORMAT}" \
+            ${RUN_TESTS_FLAG} \
+            ${GH_RELEASE_FLAG} \
+            ${DRAFT_FLAG} \
+            ${PRERELEASE_FLAG} \
+            ${TAG_FLAG}
+
+      - name: Upload artifacts to workflow
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: releases/*
+          if-no-files-found: ignore

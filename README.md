@@ -145,7 +145,23 @@ Report is generated at:
 benchmarks/report.md
 ```
 
-## 10) Documentation map
+## 10) Export release artifacts (.deb / .rpm / all)
+
+```bash
+bash scripts/release/build_release.sh --format all
+bash scripts/release/build_release.sh --format deb
+bash scripts/release/build_release.sh --format rpm
+```
+
+Artifacts are exported to `./releases`.
+
+Optional GitHub Release upload (requires `gh auth login`):
+
+```bash
+bash scripts/release/build_release.sh --format all --github-release --tag v0.1.0
+```
+
+## 11) Documentation map
 
 - `docs/README.md`
 - `docs/architecture/overview.md`
