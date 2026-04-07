@@ -1,3 +1,0 @@
-/usr/sbin/cmake -E rm -f CMakeFiles/unit_test_aof_persistence.dir/objects.a
-/usr/sbin/x86_64-w64-mingw32-ar qc CMakeFiles/unit_test_aof_persistence.dir/objects.a @CMakeFiles/unit_test_aof_persistence.dir/objects1.rsp
-/usr/sbin/x86_64-w64-mingw32-g++ -O3 -DNDEBUG -Wl,--whole-archive CMakeFiles/unit_test_aof_persistence.dir/objects.a -Wl,--no-whole-archive -o unit_test_aof_persistence.exe -Wl,--out-implib,libunit_test_aof_persistence.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles/unit_test_aof_persistence.dir/linkLibs.rsp
