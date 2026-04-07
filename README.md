@@ -14,6 +14,8 @@
   Redis-inspired in-memory database written in modern C++.
   <br>
   <code>makrounaDB</code> runs as a CLI server, supports RESP2-style requests, TTL, and AOF persistence.
+  <br><br>
+  <a href="https://makrounadb.omarchiboub.me">makrounadb.omarchiboub.me</a>
 </p>
 
 ---
