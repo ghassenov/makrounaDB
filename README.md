@@ -1,10 +1,26 @@
-# makrounaDB
+<div align="center">
+  <img src="MakrounaDB.png" alt="makrounaDB Logo" width="500"/>
+</div>
 
-Redis-inspired in-memory database written in modern C++.
+<h1 align="center">makrounaDB</h1>
 
-`makrounaDB` runs as a CLI server, supports RESP2-style requests, TTL, and AOF persistence.
+<div align="center">
+  <img src="https://img.shields.io/badge/version-0.1.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
+  <img src="https://github.com/user/repo/actions/workflows/ci.yml/badge.svg" alt="Build Status">
+</div>
 
-## 1) Prerequisites
+<p align="center">
+  Redis-inspired in-memory database written in modern C++.
+  <br>
+  <code>makrounaDB</code> runs as a CLI server, supports RESP2-style requests, TTL, and AOF persistence.
+</p>
+
+---
+
+## 🚀 Getting Started
+
+### 1) Prerequisites
 
 Install required tools:
 
@@ -15,7 +31,7 @@ sudo apt install -y g++ cmake ninja-build python3 netcat-openbsd
 
 > `netcat-openbsd` is only needed for manual socket testing.
 
-## 2) Build the project
+### 2) Build the project
 
 From the repository root:
 
@@ -24,39 +40,37 @@ cmake -S . -B build -G Ninja
 cmake --build build
 ```
 
-This produces the server binary:
+This produces the server binary at `./build/makrounaDB`.
 
-```bash
-./build/makrounaDB
-```
-
-## 3) Run test suite
+### 3) Run test suite
 
 ```bash
 ctest --test-dir build --output-on-failure
 ```
 
-## 4) Start the server
+## 🖥️ Usage
 
-### Basic run
+### 1) Start the server
+
+#### Basic run
 
 ```bash
 ./build/makrounaDB
 ```
 
-### Run with explicit options
+#### Run with explicit options
 
 ```bash
 ./build/makrounaDB --port 6379 --aof data/appendonly.aof
 ```
 
-### CLI help
+#### CLI help
 
 ```bash
 ./build/makrounaDB --help
 ```
 
-## 5) Natural language CLI mode
+### 2) Natural language CLI mode
 
 You can interact with a running server using natural language:
 
@@ -76,13 +90,11 @@ Example natural language inputs:
 
 Type `quit` to exit NL shell mode.
 
-## 6) Test commands manually (socket level)
+### 3) Test commands manually (socket level)
 
 Use the same protocol style documented in `docs/protocol/command-spec.md`.
 
-RESP request format:
-
-`*<argc>\r\n$<len>\r\n<arg>\r\n...`
+RESP request format: `*<argc>\r\n$<len>\r\n<arg>\r\n...`
 
 Reply types:
 - Simple string: `+...\r\n`
@@ -98,6 +110,8 @@ printf '*1\r\n$4\r\nPING\r\n' | nc -N 127.0.0.1 6379
 printf '*3\r\n$3\r\nSET\r\n$4\r\nname\r\n$10\r\nmakrounaDB\r\n' | nc -N 127.0.0.1 6379
 printf '*2\r\n$3\r\nGET\r\n$4\r\nname\r\n' | nc -N 127.0.0.1 6379
 printf '*2\r\n$4\r\nINCR\r\n$7\r\ncounter\r\n' | nc -N 127.0.0.1 6379
+```
+
 printf '*3\r\n$6\r\nEXPIRE\r\n$4\r\nname\r\n$2\r\n10\r\n' | nc -N 127.0.0.1 6379
 printf '*2\r\n$3\r\nTTL\r\n$4\r\nname\r\n' | nc -N 127.0.0.1 6379
 ```

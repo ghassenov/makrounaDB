@@ -62,3 +62,4 @@ benchmarks/report.md
 .vscode/
 .idea/
 .DS_Store
+.claude
